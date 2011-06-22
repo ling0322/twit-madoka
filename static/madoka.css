@@ -1,0 +1,25 @@
+body {
+    font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    margin: 0px;
+    padding: 0px;
+}
+ul {
+    list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+}
+a {
+    color: #34a0cc;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a:visited {
+    color: #34a0cc;
+    text-decoration: none;
+}
+a:hover {
+    color: #34a0cc;
+    text-decoration: underline;
+}
