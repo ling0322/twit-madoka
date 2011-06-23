@@ -39,7 +39,12 @@ class Entry(tornado.web.UIModule):
             ret += ' ago'
             return ret
     
-    def render(self, status):
+    def render(self, status, screen_name, non_operation = False):
+        
+        if screen_name == status['screen_name']:
+            disp_remove = True
+        else:
+            disp_remove = False
         
         # 把推中的一些内容改成链接形式
         
@@ -56,7 +61,7 @@ class Entry(tornado.web.UIModule):
         status['created_at'] = self._strftime(status['created_at'])
         
         return self.render_string(
-            "status.html", status = status)
+            "status.html", status = status, disp_remove = disp_remove, non_operation = non_operation)
         
 class Menu(tornado.web.UIModule):
 

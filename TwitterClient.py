@@ -149,16 +149,22 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         mention
         show  (得到某个特定id的Tweet
         usertl (User Timeline
+        remove
     '''
     
     def _on_twitter_request(self, callback, response):
         
         # 这个也是TwitterMixin里面的东西，重写方法来拦截错误
-        
         if response.error:
             raise response.error
             return
-        callback(tornado.escape.json_decode(response.body))
+        
+        # 如果callback为None表示不需要回调函数，就直接调用self.finish就可以了ww
+        if callback != None:
+            callback(tornado.escape.json_decode(response.body))
+        else:
+            self.finish()
+            
 
     def _dumpTweet(self, tweet):
         ''' 整理Tweet的内容将Twitter API返回的Tweet的格式转换成本地使用的格式 '''
@@ -216,6 +222,17 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 path = "/statuses/show/" + str(self.get_argument('id')),
                 access_token = {u'secret': secret, u'key': key},
                 callback = self.async_callback(self._on_fetch, single_tweet = True),
+                ) 
+        elif request == 'remove':
+            # 删除某个Tweet
+            def on_fetch(tweet):
+                pass
+            
+            self.twitter_request(
+                path = "/statuses/destroy/" + str(self.get_argument('id')),
+                access_token = {u'secret': secret, u'key': key},
+                post_args = {},
+                callback = None,
                 ) 
         elif request == 'user_timeline':
             # 得到某用户的Timeline

@@ -14,7 +14,7 @@
   <div class="divspace">{{ title }}</div>
   {% for tweet in tweets %}
   <ul>
-     {{ modules.Entry(tweet) }}
+     {{ modules.Entry(tweet, screen_name) }}
   </ul>
   {% end %}
   {% if page > 1 %}<a href="?page={{ page - 1 }}">&laquo; Newer </a>{% end %} 

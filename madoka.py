@@ -45,7 +45,6 @@ twitter_consumer_secret = ''
 
 define("port", default=3322, help="run on the given port", type=int)
 
-
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
@@ -58,25 +57,35 @@ class Application(tornado.web.Application):
             (r"/twitsignin", TwitterClient.TwitterSignInHandler),
             (r"/logout", LogoutHandler),
             (r"/user/(.*)", UserHandler),
+            (r"/remove", RemoveHandler),
+            
         ]
         settings = dict(
             ui_modules = uimodules,
             login_url = "/login",
             host_url = 'http://loliloli.info/',
+            # host_url = 'http://127.0.0.1:3322/',
             twitter_consumer_key = "cFDUg6a9DU08rPQTukw2w",
             twitter_consumer_secret = "gxDykjVceNppTow1LppvXTrUWNjwIOFvhnf0Imy6NQ0",
             cookie_secret="43oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
             api_url = 'http://loliloli.info/api',
+            # api_url = 'http://127.0.0.1:3322/api',
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
 class MadokaBaseHandler(tornado.web.RequestHandler):
-    def _render_tweets(self, title, page, response):
+    def _response_check(self, response):
+        ''' 
+        检查是否返回错误，有错误抛出异常，没有错误就正常返回
+        '''
+        
         if response.error:
             raise tornado.web.HTTPError(403)
-            
+        
+    def _render_tweets(self, title, page, response):
+        self._response_check(response)
         tweets = tornado.escape.json_decode(response.body)
         self.render("madoka.html", tweets = tweets, page = page, title = title, 
                     screen_name = self.current_user['screen_name'])
@@ -142,14 +151,62 @@ class MentionHandler(MadokaBaseHandler):
         
         return  
 
+class RemoveHandler(MadokaBaseHandler):
+    @tornado.web.authenticated
+    @tornado.web.asynchronous 
+    def get(self):
+        
+        # 删除一条Tweet，首先让用户确认是否删除
+        
+        def on_response(response):
+            self._response_check(response)
+            tweet = tornado.escape.json_decode(response.body)
+            self.render('remove.html', tweet = tweet, id = id, 
+                        screen_name = self.current_user['screen_name'])
+            
+        access_token = self.get_secure_cookie('access_token')
+        id = self.get_argument('id')
+        
+        args = dict(
+            id = id,
+            access_token = access_token,
+        )
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(
+            self.settings['api_url'] + '/show?' + urllib.urlencode(args),
+            on_response
+            )
+        
+    @tornado.web.authenticated
+    @tornado.web.asynchronous         
+    def post(self):
+        
+        # 用户确认后删除这条推
+        
+        def on_response(response):
+            self._response_check(response)
+            self.redirect('/')
+        
+        access_token = self.get_secure_cookie('access_token')
+        id = self.get_argument('id')
+        
+        args = dict(
+            id = id,
+            access_token = access_token,
+        )
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(
+            self.settings['api_url'] + '/remove?' + urllib.urlencode(args),
+            on_response
+            )
+        
 
 class UpdateHandler(MadokaBaseHandler): 
     @tornado.web.authenticated
     @tornado.web.asynchronous
     def post(self):
         def on_response(response):
-            if response.error:
-                raise tornado.web.HTTPError(403)
+            self._response_check(response)
             self.redirect('/')
             
         access_token = self.get_secure_cookie('access_token')
@@ -171,9 +228,7 @@ class RetweetHandler(MadokaBaseHandler):
     def get(self):
         
         def on_response(response):
-            if response.error:
-                raise tornado.web.HTTPError(403)
-            
+            self._response_check(response)
             tweet = tornado.escape.json_decode(response.body)
             self.render("retweet.html", screen_name = self.current_user['screen_name'],
                         text = 'RT @' + tweet['screen_name'] + ':' + tweet['text'])
@@ -205,7 +260,7 @@ class LogoutHandler(tornado.web.RequestHandler):
 
 
 def main():
-    # tornado.options.parse_command_line()
+    tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(Application())
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
