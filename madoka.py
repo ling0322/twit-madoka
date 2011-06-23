@@ -16,6 +16,9 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+import sys 
+reload(sys) 
+sys.setdefaultencoding('utf-8') 
 
 import logging
 import tornado.auth
@@ -30,7 +33,7 @@ import TwitterClient
 import base64
 import urllib
 import re
-
+import getopt
 import uimodules
 
 from tornado.options import define, options
@@ -38,7 +41,9 @@ from tornado.options import define, options
 twitter_consumer_key = ''
 twitter_consumer_secret = ''
 
-define("port", default=8080, help="run on the given port", type=int)
+# get command line arguments
+
+define("port", default=3322, help="run on the given port", type=int)
 
 
 class Application(tornado.web.Application):
@@ -57,13 +62,13 @@ class Application(tornado.web.Application):
         settings = dict(
             ui_modules = uimodules,
             login_url = "/login",
-            host_url = 'http://127.0.0.1:8080/',
+            host_url = 'http://loliloli.info/',
             twitter_consumer_key = "cFDUg6a9DU08rPQTukw2w",
             twitter_consumer_secret = "gxDykjVceNppTow1LppvXTrUWNjwIOFvhnf0Imy6NQ0",
             cookie_secret="43oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
-            api_url = 'http://127.0.0.1:8080/api',
+            api_url = 'http://loliloli.info/api',
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
@@ -77,7 +82,10 @@ class MadokaBaseHandler(tornado.web.RequestHandler):
                     screen_name = self.current_user['screen_name'])
     
     def get_current_user(self):
-        return tornado.escape.json_decode(self.get_secure_cookie("access_token"))
+        if self.get_secure_cookie("access_token") == None:
+            return None
+        else:
+            return tornado.escape.json_decode(self.get_secure_cookie("access_token"))
 
 
     
@@ -197,7 +205,7 @@ class LogoutHandler(tornado.web.RequestHandler):
 
 
 def main():
-    tornado.options.parse_command_line()
+    # tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(Application())
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()

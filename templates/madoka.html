@@ -8,25 +8,18 @@
 <body>
   {{ modules.Menu(screen_name) }}
   <form action="/update" method="post">
-    <ul>
-      <li><textarea name="madoka" rows="4" cols="0"></textarea></li>
-      <li><button type="submit">Post</button></li>
-    </ul>
+    <div class="divspace"><textarea name="madoka" rows="2"></textarea></div>
+    <div class="divspace"><button type="submit">Post</button></div>
   </form>
-  {{ title }}
+  <div class="divspace">{{ title }}</div>
   {% for tweet in tweets %}
-  <hr />
   <ul>
      {{ modules.Entry(tweet) }}
   </ul>
   {% end %}
-  <hr />
-  <div>
-    {% if page > 1 %}<a href="?page={{ page - 1 }}">&laquo; Newer </a>{% end %} 
-    <span>|</span> 
-    <a href="?page={{ page + 1 }}"> Older &raquo; </a>
-  <div>
-  <div>&nbsp;</div>
-  (C)ling0322
+  {% if page > 1 %}<a href="?page={{ page - 1 }}">&laquo; Newer </a>{% end %} 
+  <span>|</span> 
+  <a href="?page={{ page + 1 }}"> Older &raquo; </a>
+  <div>(C)ling0322</div>
 </body>
 </html>

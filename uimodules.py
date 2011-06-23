@@ -18,10 +18,9 @@ class Entry(tornado.web.UIModule):
     def _strftime(self, timestr):
         ''' 将一个标准格式时间, 改变成Tweet上显示的格式 '''
 
-        timeZone = +8
-        cntTime = datetime.datetime.now()
-        t = datetime.datetime(*time.strptime(timestr, "%a %b %d %X +0000 %Y")[0:6])
-        delta = int((cntTime - t).total_seconds() - timeZone * 3600)
+        cntTime = datetime.datetime(*time.gmtime()[0:6])
+        t = datetime.datetime(*time.strptime(timestr, "%a %b %d %X %Z %Y")[0:6])
+        delta = int((cntTime - t).total_seconds())
         ret = ''
         if delta > 24 * 60 * 60:
             # if interval is more than 1 day then just return the date

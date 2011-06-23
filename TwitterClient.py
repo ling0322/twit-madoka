@@ -167,7 +167,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         t['text'] = tweet['text']
         t['name'] = tweet['user']['name']
         t['screen_name'] = tweet['user']['screen_name']
-        t['created_at'] = tweet['created_at']
+        t['created_at'] = tweet['created_at'].replace('+0000', 'UTC')
         t['id'] = tweet['id']
         return t
     
