@@ -35,6 +35,7 @@ import urllib
 import re
 import getopt
 import uimodules
+import time
 
 from tornado.options import define, options
 
@@ -58,20 +59,20 @@ class Application(tornado.web.Application):
             (r"/logout", LogoutHandler),
             (r"/user/(.*)", UserHandler),
             (r"/remove", RemoveHandler),
-            
+            (r"/details", DetailsHandler),
         ]
         settings = dict(
             ui_modules = uimodules,
             login_url = "/login",
-            host_url = 'http://loliloli.info/',
-            # host_url = 'http://127.0.0.1:3322/',
+            # host_url = 'http://loliloli.info/',
+            host_url = 'http://127.0.0.1:3322/',
             twitter_consumer_key = "cFDUg6a9DU08rPQTukw2w",
             twitter_consumer_secret = "gxDykjVceNppTow1LppvXTrUWNjwIOFvhnf0Imy6NQ0",
             cookie_secret="43oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
-            api_url = 'http://loliloli.info/api',
-            # api_url = 'http://127.0.0.1:3322/api',
+            # api_url = 'http://loliloli.info/api',
+            api_url = 'http://127.0.0.1:3322/api',
         )
         tornado.web.Application.__init__(self, handlers, **settings)
 
@@ -221,6 +222,24 @@ class UpdateHandler(MadokaBaseHandler):
                    method = 'POST',
                    body = urllib.urlencode(post_args),
                    callback = on_response)
+
+class DetailsHandler(MadokaBaseHandler): 
+    @tornado.web.authenticated
+    @tornado.web.asynchronous
+    def get(self):
+        
+        def on_response(response):
+            self.finish()
+            
+        access_token = self.get_secure_cookie('access_token')
+        args = dict(
+            access_token = access_token,
+            id = self.get_argument('id')
+        )
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(self.settings['api_url'] + '/test?' + urllib.urlencode(args), on_response)
+        
+        
 
 class RetweetHandler(MadokaBaseHandler): 
     @tornado.web.authenticated

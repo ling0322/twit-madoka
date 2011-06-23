@@ -175,6 +175,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         t['screen_name'] = tweet['user']['screen_name']
         t['created_at'] = tweet['created_at'].replace('+0000', 'UTC')
         t['id'] = tweet['id']
+        t['in_reply_to_status_id'] = tweet['in_reply_to_status_id']
         return t
     
     
@@ -223,6 +224,15 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 access_token = {u'secret': secret, u'key': key},
                 callback = self.async_callback(self._on_fetch, single_tweet = True),
                 ) 
+        elif request == 'test':
+            #得到某个特定id的Tweet
+
+            self.twitter_request(
+                path = "/related_results/show/" + str(self.get_argument('id')),
+                access_token = {u'secret': secret, u'key': key},
+                callback = self.async_callback(self._on_fetch, single_tweet = True),
+                ) 
+            
         elif request == 'remove':
             # 删除某个Tweet
             def on_fetch(tweet):
