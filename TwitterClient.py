@@ -192,6 +192,31 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         self.write(tornado.escape.json_encode(dump))
         self.finish()
         
+    def _on_related_results(self, res):
+        
+        # 处理/related_results/show/:id.json API返回结果
+        # 如果有相关结果list就有1个元素 反之则没有
+        
+        in_reply_to = []
+        replies = []
+            
+        if len(res) > 0:
+            results = res[0]['results']
+            for item in results:
+                if item['annotations']['ConversationRole'] == 'Ancestor':
+                    in_reply_to.append(self._dumpTweet(item['value']))
+                else:
+                    replies.append(self._dumpTweet(item['value']))
+        
+        dump = dict(
+            in_reply_to = in_reply_to,
+            replies = replies,
+            )
+        
+        self.write(tornado.escape.json_encode(dump))
+        self.finish()
+
+        
     @tornado.web.asynchronous
     def get(self, request):
         access_token = tornado.escape.json_decode(self.get_argument('access_token'))
@@ -224,13 +249,14 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 access_token = {u'secret': secret, u'key': key},
                 callback = self.async_callback(self._on_fetch, single_tweet = True),
                 ) 
-        elif request == 'test':
-            #得到某个特定id的Tweet
+        elif request == 'details':
+            
+            #得到某个特定id的Tweet相关的结果
 
             self.twitter_request(
                 path = "/related_results/show/" + str(self.get_argument('id')),
                 access_token = {u'secret': secret, u'key': key},
-                callback = self.async_callback(self._on_fetch, single_tweet = True),
+                callback = self._on_related_results,
                 ) 
             
         elif request == 'remove':
@@ -250,6 +276,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
             self.twitter_request(
                 path = "/statuses/user_timeline",
                 access_token = {u'secret': secret, u'key': key},
+                page = self.get_argument('page', 1),
                 screen_name = self.get_argument('screen_name'),
                 callback = self._on_fetch,
                 ) 
@@ -274,16 +301,24 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 self.finish()
             
             # 将多于140个字符的部分截去
+            
             if len(status) > 140:
                 text = status[:136] + '...'
             else:
                 text = status
 
+            # 如果有in_reply_to参数则带上这个参数ww
+            
+            in_reply_to_param = {}
+            if self.get_argument('in_reply_to', None):
+                in_reply_to_param['in_reply_to_status_id'] = self.get_argument('in_reply_to', None)
+            
             self.twitter_request(
                 path = "/statuses/update",
                 post_args={"status": text},
                 access_token = {u'secret': secret, u'key': key},
                 callback = on_fetch,
+                **in_reply_to_param
                 )       
             
     

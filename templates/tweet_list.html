@@ -1,0 +1,7 @@
+{% if len(tweets) > 0 %}
+  {{ modules.Entry(tweets[0], screen_name) }}
+  {% for tweet in tweets[1:] %}
+    <div>----------</div>
+    {{ modules.Entry(tweet, screen_name) }}
+  {% end %}
+{% end %}

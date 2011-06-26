@@ -12,11 +12,8 @@
     <div class="divspace"><button type="submit">Post</button></div>
   </form>
   <div class="divspace">{{ title }}</div>
-  {% for tweet in tweets %}
-  <ul>
-     {{ modules.Entry(tweet, screen_name) }}
-  </ul>
-  {% end %}
+  <div>----------</div>
+  <div>{{ modules.TweetList(tweets = tweets, screen_name = screen_name) }}</div>
   {% if page > 1 %}<a href="?page={{ page - 1 }}">&laquo; Newer </a>{% end %} 
   <span>|</span> 
   <a href="?page={{ page + 1 }}"> Older &raquo; </a>

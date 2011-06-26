@@ -59,7 +59,8 @@ class Application(tornado.web.Application):
             (r"/logout", LogoutHandler),
             (r"/user/(.*)", UserHandler),
             (r"/remove", RemoveHandler),
-            (r"/details", DetailsHandler),
+            (r"/conversation_line", ConversationLineHandler),
+            (r"/reply", ReplyHandler),
         ]
         settings = dict(
             ui_modules = uimodules,
@@ -77,13 +78,20 @@ class Application(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, **settings)
 
 class MadokaBaseHandler(tornado.web.RequestHandler):
-    def _response_check(self, response):
+    def _response_check(self, response, raise_exception = True):
         ''' 
-        检查是否返回错误，有错误抛出异常，没有错误就正常返回
+        检查是否返回错误，
+        raise_exception为真, 则有错误抛出异常，没有错误就正常返回
+        raise_exception为假, 则有错误返回False，没有错误就返回True
         '''
-        
-        if response.error:
-            raise tornado.web.HTTPError(403)
+        if raise_exception == True:
+            if response.error:
+                raise tornado.web.HTTPError(403)
+        else:
+            if response.error:
+                return False
+            else:
+                return True          
         
     def _render_tweets(self, title, page, response):
         self._response_check(response)
@@ -214,22 +222,102 @@ class UpdateHandler(MadokaBaseHandler):
         args = dict(
             access_token = access_token,
         )
+        
+        # 如果有in_reply_to则加入in_reply_to参数
+        
+        if self.get_argument('in_reply_to', None):
+            args['in_reply_to'] = self.get_argument('in_reply_to', None)
+            
         post_args = dict(
             status = tornado.escape.url_escape(self.get_argument('madoka'))
         )
+        
         http = tornado.httpclient.AsyncHTTPClient()
         http.fetch(self.settings['api_url'] + '/update?' + urllib.urlencode(args), 
                    method = 'POST',
                    body = urllib.urlencode(post_args),
                    callback = on_response)
 
-class DetailsHandler(MadokaBaseHandler): 
+class ConversationLineHandler(MadokaBaseHandler): 
     @tornado.web.authenticated
     @tornado.web.asynchronous
     def get(self):
         
-        def on_response(response):
-            self.finish()
+        # 这里要完成三步工作
+        #
+        #     1. 得到原始推的内容
+        #     2. 得到相关推的内容
+        #     3. *得到原始推in_reply_to推的内容
+        #
+        # 因为Twitter API -> /related_results/show/:id在有些时候并不能返回会话
+        # 所以还需要调用得到in_reply_to的推的内容 ( 参照现在Twitter官方Web的方法
+        # 要等到三块内容都完成的时候才会产生输出
+        # 因为Tornado是单线程运行的 所以我们不需要考虑临界条件的问题ww
+        
+        closure_var = {}
+        closure_var['finished_one'] = False
+        closure_var['in_reply_to_finished'] = False
+        
+        def _on_related_results(response):
+            
+            # 这里忽略错误
+            
+            if self._response_check(response, raise_exception = False) == True:
+                closure_var['related_results'] = tornado.escape.json_decode(response.body)
+            else:
+                closure_var['related_results'] = dict(
+                    in_reply_to = [],
+                    replies = [],
+                    )
+                 
+            request_finished()
+
+            
+        def _on_origin_tweet(response):
+            self._response_check(response)
+            closure_var['origin_tweet'] = tornado.escape.json_decode(response.body)
+            request_finished()
+
+            
+        def _on_in_reply_to(response):
+            
+            # 这里可以忽略错误
+            
+            if self._response_check(response, raise_exception = False) == True:
+                closure_var['related_results']['in_reply_to'].append(tornado.escape.json_decode(response.body))
+                
+            closure_var['in_reply_to_finished'] = True
+            request_finished()            
+            
+            pass
+            
+        def request_finished():
+            if closure_var['finished_one'] == False:
+                closure_var['finished_one'] = True
+                return 
+            
+            # 如果原始推有in_reply_to对象, 且related_results没有返回in_reply_to的推那么就再去
+            # 调用API得到in_reply_to的推
+            
+            not_finished = closure_var['in_reply_to_finished'] == False
+            origin_has_reply_to = closure_var['origin_tweet']['in_reply_to_status_id'] != None
+            empty_in_reply_to = len(closure_var['related_results']['in_reply_to']) == 0
+            
+            if not_finished and origin_has_reply_to and empty_in_reply_to:
+                args = dict(
+                    access_token = access_token,
+                    id = closure_var['origin_tweet']['in_reply_to_status_id'],
+                    )
+                http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_in_reply_to)
+                return 
+
+            self.render(
+                "conversation_line.html", 
+                related_results = closure_var['related_results'],
+                origin_tweet = closure_var['origin_tweet'],
+                screen_name = self.current_user['screen_name'],
+                )
+                
             
         access_token = self.get_secure_cookie('access_token')
         args = dict(
@@ -237,9 +325,45 @@ class DetailsHandler(MadokaBaseHandler):
             id = self.get_argument('id')
         )
         http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(self.settings['api_url'] + '/test?' + urllib.urlencode(args), on_response)
+        http.fetch(self.settings['api_url'] + '/details?' + urllib.urlencode(args), _on_related_results)
+        http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_origin_tweet)
+
         
+class ReplyHandler(MadokaBaseHandler): 
+    @tornado.web.authenticated
+    @tornado.web.asynchronous
+    def get(self):
         
+        def on_response(response):
+            self._response_check(response)
+            tweet = tornado.escape.json_decode(response.body)
+            user_mentions = re.findall('@[A-Za-z0-9]+', tweet['text'])
+            text_user_mentions = ''
+            for mention in user_mentions:
+                if mention == '@' + self.current_user['screen_name']:
+                    
+                    # 回复列表里面去掉用户自己
+                    
+                    continue
+                
+                text_user_mentions = text_user_mentions + mention + ' '
+                
+            self.render(
+                "retweet.html", 
+                screen_name = self.current_user['screen_name'],
+                text = '@' + tweet['screen_name'] + ' ' + text_user_mentions,
+                origin_tweet = tweet,
+                title = 'Reply',
+                )
+            
+        access_token = self.get_secure_cookie('access_token')
+        args = dict(
+            access_token = access_token,
+            id = self.get_argument('id')
+        )
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
+
 
 class RetweetHandler(MadokaBaseHandler): 
     @tornado.web.authenticated
@@ -249,8 +373,13 @@ class RetweetHandler(MadokaBaseHandler):
         def on_response(response):
             self._response_check(response)
             tweet = tornado.escape.json_decode(response.body)
-            self.render("retweet.html", screen_name = self.current_user['screen_name'],
-                        text = 'RT @' + tweet['screen_name'] + ':' + tweet['text'])
+            self.render(
+                "retweet.html", 
+                screen_name = self.current_user['screen_name'],
+                text = 'RT @' + tweet['screen_name'] + ': ' + tweet['text'],
+                origin_tweet = tweet,
+                title = 'Retweet',
+                )
             
         access_token = self.get_secure_cookie('access_token')
         args = dict(

@@ -1,0 +1,25 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Madoka</title>
+  <link rel="stylesheet" type="text/css" href="/static/madoka.css" />
+</head>
+<body>
+  {{ modules.Menu(screen_name) }}
+  <div class="divspace">Conversation Line:</div>
+  <div>----------</div>
+  {% if len(related_results['in_reply_to']) > 0 %}
+    <div>{{ modules.TweetList(screen_name = screen_name, tweets = related_results['in_reply_to']) }}</div>
+    <div>-- in relpy to &uarr; --</div>
+  {% end %}
+  <div>
+    {{ modules.Entry(origin_tweet, screen_name) }}
+  </div>
+  {% if len(related_results['replies']) > 0 %}
+    <div>-- replies &darr; --</div>
+    <div>{{ modules.TweetList(screen_name = screen_name, tweets = related_results['replies']) }}</div>
+  {% end %}
+  <div>(C)ling0322</div>
+</body>
+</html>

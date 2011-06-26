@@ -63,7 +63,10 @@ class Entry(tornado.web.UIModule):
         return self.render_string(
             "status.html", status = status, disp_remove = disp_remove, non_operation = non_operation)
         
+class TweetList(tornado.web.UIModule):
+    def render(self, screen_name, tweets):
+        return self.render_string("tweet_list.html", screen_name = screen_name, tweets = tweets)
+    
 class Menu(tornado.web.UIModule):
-
     def render(self, screen_name):
         return self.render_string("menu.html", screen_name = screen_name)
