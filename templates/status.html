@@ -1,15 +1,3 @@
 <div>{{ status['screen_name'] }}({{status['name'] }}):</div>
 <div>{{ status['text'] }}</div>
-<div>
-  {{ status['created_at'] }}&nbsp;
-  {% if non_operation == False %}
-    <a href="/reply?id={{ status['id'] }}">@</a>
-    <a href="/retweet?id={{ status['id'] }}">RT</a>
-    {% if status['in_reply_to_status_id'] != None %}
-      <a href="/conversation_line?id={{ status['id'] }}">L</a>
-    {% end %} 
-    {% if disp_remove == True %}
-      <a href="/remove?id={{ status['id'] }}">RM</a>
-    {% end %}
-  {% end %}
-</div>
+<div>{{ status['created_at'] }}&nbsp;{% if non_operation == False %}<a href="/reply?id={{ status['id'] }}">@</a>&nbsp;<a href="/retweet?id={{ status['id'] }}">RT</a>&nbsp;{% if status['in_reply_to_status_id'] != None %}<a href="/conversation_line?id={{ status['id'] }}">L</a>&nbsp;{% end %}{% if disp_remove == True %}<a href="/remove?id={{ status['id'] }}">RM</a>&nbsp;{% end %}{% end %}</div>
