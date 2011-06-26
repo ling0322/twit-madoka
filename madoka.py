@@ -65,14 +65,11 @@ class Application(tornado.web.Application):
         settings = dict(
             ui_modules = uimodules,
             login_url = "/login",
-            # host_url = 'http://loliloli.info/',
-            host_url = 'http://127.0.0.1:3322/',
             twitter_consumer_key = "cFDUg6a9DU08rPQTukw2w",
             twitter_consumer_secret = "gxDykjVceNppTow1LppvXTrUWNjwIOFvhnf0Imy6NQ0",
             cookie_secret="43oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=",
             template_path = os.path.join(os.path.dirname(__file__), "templates"),
             static_path = os.path.join(os.path.dirname(__file__), "static"),
-            # api_url = 'http://loliloli.info/api',
             api_url = 'http://127.0.0.1:3322/api',
         )
         tornado.web.Application.__init__(self, handlers, **settings)
