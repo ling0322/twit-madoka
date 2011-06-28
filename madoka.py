@@ -392,9 +392,6 @@ class RetweetHandler(MadokaBaseHandler):
         
 class LoginHandler(tornado.web.RequestHandler):
 
-    def initialize(self):
-        print "gggggggggggg"
-
     def get(self):
         self.render('login.html', failed = self.get_argument('failed', 'false'))
     
