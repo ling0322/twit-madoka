@@ -6,9 +6,9 @@
   <link rel="stylesheet" type="text/css" href="static/madoka.css" />
 </head>
 <body>
-  {{ modules.Menu(screen_name) }}
+  {% module Menu(screen_name) %}
   <div class="divspace">Remove This Tweet:</div>
-  {{ modules.Entry(tweet, screen_name, True) }}
+  {% module Entry(tweet, screen_name, True) %}
   <div>----------</div>
   <div>Are you sure?</div>
   <div class="divspace">

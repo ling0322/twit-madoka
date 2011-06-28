@@ -50,12 +50,13 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r"/", MainHandler),
+            (r"/api/access_token", TwitterClient.TwitterSignInHandler),
             (r"/api/(.*)", TwitterClient.TwitterClient),
             (r"/mention", MentionHandler),
             (r"/update", UpdateHandler),
             (r"/retweet", RetweetHandler),
             (r"/login", LoginHandler),
-            (r"/twitsignin", TwitterClient.TwitterSignInHandler),
+
             (r"/logout", LogoutHandler),
             (r"/user/(.*)", UserHandler),
             (r"/remove", RemoveHandler),
@@ -335,20 +336,22 @@ class ReplyHandler(MadokaBaseHandler):
             self._response_check(response)
             tweet = tornado.escape.json_decode(response.body)
             user_mentions = re.findall('@[A-Za-z0-9]+', tweet['text'])
-            text_user_mentions = ''
+            mentions = []
             for mention in user_mentions:
+                
+                # 回复列表里面去掉用户自己, 去掉前面已经提到过的
+                
                 if mention == '@' + self.current_user['screen_name']:
-                    
-                    # 回复列表里面去掉用户自己
-                    
+                    continue
+                elif mention in mentions:
                     continue
                 
-                text_user_mentions = text_user_mentions + mention + ' '
+                mentions.append(mention)
                 
             self.render(
                 "retweet.html", 
                 screen_name = self.current_user['screen_name'],
-                text = '@' + tweet['screen_name'] + ' ' + text_user_mentions,
+                text = '@' + tweet['screen_name'] + ' ' + ' '.join(mentions),
                 origin_tweet = tweet,
                 title = 'Reply',
                 )
@@ -388,14 +391,42 @@ class RetweetHandler(MadokaBaseHandler):
         
         
 class LoginHandler(tornado.web.RequestHandler):
-    @tornado.web.asynchronous
+
+    def initialize(self):
+        print "gggggggggggg"
+
     def get(self):
-        if self.get_argument("access_token", None):
-            self.set_secure_cookie('access_token', self.get_argument("access_token"))
-            self.redirect('/')
-            return
+        self.render('login.html', failed = self.get_argument('failed', 'false'))
+    
+    def _on_access_token(self, response):
+        if response.error:
+            
+            # 401返回值表示用户名/密码错误
+            
+            if response.code == 401:
+                self.redirect('login?failed=true')
+            else:
+                raise tornado.web.HTTPError(403)
         
-        self.redirect('/twitsignin?callback=' + tornado.escape.url_escape('http://' + self.request.host + '/login'))
+        self.set_secure_cookie('access_token', response.body)
+        self.redirect('/')
+        
+    
+    @tornado.web.asynchronous    
+    def post(self):
+
+        post_args = dict(
+            user = self.get_argument('user'),
+            passwd = self.get_argument('passwd'),
+        )
+        
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(self.settings['api_url'] + '/access_token', 
+                   method = 'POST',
+                   body = urllib.urlencode(post_args),
+                   callback = self._on_access_token)
+        
+        
 
 class LogoutHandler(tornado.web.RequestHandler):
     def get(self):

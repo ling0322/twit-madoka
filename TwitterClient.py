@@ -15,129 +15,105 @@ import re
 import tornado.auth
 
 class TwitterSignInHandler(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
-    def _on_access_token(self, callback, response):
-        ''' STEP8(最后一步): 得到access_token (终于完成了ww '''
+    def _on_access_token(self, response):
+        ''' STEP5(最后一步): 得到access_token (终于完成了ww '''
         
         if response.error:
             raise tornado.web.HTTPError(403, "Get Access Token Failed ~")
             return
 
         access_token = tornado.auth._oauth_parse_response(response.body)
+        self.write(tornado.escape.json_encode(access_token))
+        self.finish()
 
-        
-        url = tornado.escape.url_unescape(self.get_cookie('_tcallback_url').encode('utf-8'))
-        self.clear_cookie('_tcallback_url')
-        self.redirect(url + '?access_token=' + tornado.escape.json_encode(access_token))
-        
-    def _on_request_token(self, authorize_url, callback_uri, response):
+    def _on_authenticate_page(self, response):
         '''
-        STEP2:
-        这个函数得到oauth_token以后触发，在原来的实现中主要完成重定向到authenticate页面的任务
-        在我们这里则是用自己的登录框去替代Twitter官方的登录界面
+        STEP3: 
+        抓取到Twitter登陆页面以后将用户名和密码POST上去
         '''
-        
-        def on_authenticate_page(response):
-            if response.error:
-                raise tornado.web.HTTPError(403, "Get Authenticate Message Failed ~")
-            
-            # STEP3: 从authenticate_page里面得到authenticity_token和oauth_token, 生成登录界面
-            
-            authenticity_token = re.findall('<input name=\"authenticity_token\" type=\"hidden\" value=\"(.+)\" \/>', response.body)[0]
-            oauth_token = re.findall('<input id=\"oauth_token\" name=\"oauth_token\" type=\"hidden\" value=\"(.+)\" \/>', response.body)[0]
-            
-            self.render("login.html", 
-                authenticity_token = authenticity_token,
-                oauth_token = oauth_token,
-                authorize_url = '/twitsignin')
-        
         
         if response.error:
-            raise tornado.web.HTTPError(403, "Could not get request token ~")
-        request_token = tornado.auth._oauth_parse_response(response.body)
-        data = "|".join([base64.b64encode(request_token["key"]),
-            base64.b64encode(request_token["secret"])])
-        self.set_cookie("_oauth_request_token", data)
-        args = dict(oauth_token=request_token["key"])
-        if callback_uri:
-            args["oauth_callback"] = urlparse.urljoin(
-                self.request.full_url(), callback_uri)
-        auth_url = authorize_url + "?" + urllib.urlencode(args)
-        
-        # self.redirect(auth_url) <- 原本在这里的是这个
-        # 接着要去GET这个页面，因为我们还要得到里面的authenticity_token
-        
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(auth_url, on_authenticate_page)
-        
-    
-    @tornado.web.asynchronous 
-    def get(self):
-        
-        def null_func():
-            pass
-        
-        if self.get_argument("oauth_token", None):
+            raise tornado.web.HTTPError(403, "Get Authenticate Message Failed ~")
             
-            # STEP7: 使用get_authenticated_user函数来根据oauth_token和oauth_verifier得到用户的access_token
-            # 这里用随意用了一个null_func，因为这个callback函数在我们这里不需要
+        authenticity_token = re.findall('<input name=\"authenticity_token\" type=\"hidden\" value=\"(.+)\" \/>', response.body)[0]
+        oauth_token = re.findall('<input id=\"oauth_token\" name=\"oauth_token\" type=\"hidden\" value=\"(.+)\" \/>', response.body)[0]
             
-            self.get_authenticated_user(null_func)
-            return
-        
-        # STEP1: 使用TwitterMixin自带的功能得到oauth_token
-        
-        callback_url = self.get_argument('callback')
-        self.set_cookie('_tcallback_url', callback_url)
-        self.authenticate_redirect()
-        
-    @tornado.web.asynchronous 
-    def post(self):
-        ''' 
-        STEP4: 当用户输入用户名和密码提交的时候触发这个函数, 
-        将用户的用户名密码信息POST到https://api.twitter.com/oauth/authorize以后抓取转到的页面
-        提取相关参数
-        '''
-
-        
-        def on_authorize_page(response):
-            ''' STEP5: 得到oauth_token和oauth_verifier然后重定向去调用get_authenticated_user函数 '''
+        # 将得到的用户名和密码POST到Twitter登陆界面
             
-            if response.error:
-                raise tornado.web.HTTPError(403, "Authorize Failed ~")
-            
-            # 如果成功，可以在返回的页面里面扣到oauth_token和oauth_verifier
-            
-            try:
-                token = re.findall('<meta http-equiv=\"refresh\" content=\"0;url=.+oauth_token=(.+)&oauth_verifier=(.+)\".*>', response.body)
-                oauth_token = token[0][0]
-                oauth_verifier = token[0][1]
-            except:
-                raise tornado.web.HTTPError(403, "Get Authorize Message Failed ~")
-            
-            # 接着要使用TwitterMixin自带的函数来验证oauth_token得到access_token, 所以这里要重定向到callback_url
-            
-            args = dict(
-                oauth_token = oauth_token,
-                oauth_verifier = oauth_verifier,
-            )
-            
-            self.redirect(self.request.full_url() + '?' + urllib.urlencode(args))
-
-        
         args = {
-            'authenticity_token': self.get_argument('authenticity_token'),
-            'oauth_token': self.get_argument('oauth_token'),
+            'authenticity_token': authenticity_token,
+            'oauth_token': oauth_token,
             'session[username_or_email]': self.get_argument('user'),
-            'session[password]': self.get_argument('password'),
+            'session[password]': self.get_argument('passwd'),
         }
         http = tornado.httpclient.AsyncHTTPClient()
         http.fetch('https://api.twitter.com/oauth/authorize', 
-                   method = 'POST',
-                   body = urllib.urlencode(args),
-                   callback = on_authorize_page)
+                    method = 'POST',
+                    body = urllib.urlencode(args),
+                    callback = self._on_authorize_page)
+       
+    def _on_request_token(self, authorize_url, callback_uri, response):
+        '''
+        STEP2:
+        用得到的oauth_token去抓取Twitter的登陆界面
+        '''
+
+        if response.error:
+            raise tornado.web.HTTPError(403, "Could not get request token ~")
+        self._request_token = tornado.auth._oauth_parse_response(response.body)
         
+        args = dict(oauth_token = self._request_token["key"])
+        auth_url = authorize_url + "?" + urllib.urlencode(args)
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(auth_url, self._on_authenticate_page)
+        
+    def _on_authorize_page(self, response):
+        ''' 
+        STEP4: 
+        如果登陆成功则取得oauth_token和oauth_verifier然后利用auth模块得到access_token
+        '''
+            
+        if response.error:
+            raise tornado.web.HTTPError(404, "Authorize Failed ~")
+            
+        # 如果成功，可以在返回的页面里面扣到oauth_token和oauth_verifier
+            
+        try:
+            token = re.findall('<meta http-equiv=\"refresh\" content=\"0;url=.+oauth_token=(.+)&oauth_verifier=(.+)\".*>', response.body)
+            request_key = token[0][0]
+            oauth_verifier = token[0][1]
+        except:
+            raise tornado.web.HTTPError(401, "Get Authorize Message Failed ~")
+            
+        if self._request_token['key'] != request_key:
+            raise tornado.web.HTTPError(403, "Get Access Token Failed ~")
+            return
+        
+        token = dict(
+            key = self._request_token['key'], 
+            secret = self._request_token['secret'],
+            verifier = oauth_verifier
+            )
+        
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(self._oauth_access_token_url(token), self._on_access_token)
+            
+    @tornado.web.asynchronous 
+    def post(self):
+        ''' 
+        STEP1: 
+        过程的入口，由tornado的auth模块帮我们得到oauth_token
+        '''
+        self.authenticate_redirect()
 
-
+    @tornado.web.asynchronous 
+    def get(self):
+        ''' 
+        STEP1: 
+        过程的入口，由tornado的auth模块帮我们得到oauth_token
+        '''
+        self.authenticate_redirect()
+        
 class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
     '''
     A Twitter Client for Madoka frontend
