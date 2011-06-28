@@ -6,19 +6,19 @@
   <link rel="stylesheet" type="text/css" href="/static/madoka.css" />
 </head>
 <body>
-  {{ modules.Menu(screen_name) }}
+  {% module Menu(screen_name) %}
   <div class="divspace">Conversation Line:</div>
   <div>----------</div>
   {% if len(related_results['in_reply_to']) > 0 %}
-    <div>{{ modules.TweetList(screen_name = screen_name, tweets = related_results['in_reply_to']) }}</div>
+    <div>{% module TweetList(screen_name = screen_name, tweets = related_results['in_reply_to']) %}</div>
     <div>-- in relpy to &uarr; --</div>
   {% end %}
   <div>
-    {{ modules.Entry(origin_tweet, screen_name) }}
+    {% module Entry(origin_tweet, screen_name) %}
   </div>
   {% if len(related_results['replies']) > 0 %}
     <div>-- replies &darr; --</div>
-    <div>{{ modules.TweetList(screen_name = screen_name, tweets = related_results['replies']) }}</div>
+    <div>{% module TweetList(screen_name = screen_name, tweets = related_results['replies']) %}</div>
   {% end %}
   <div>(C)ling0322</div>
 </body>

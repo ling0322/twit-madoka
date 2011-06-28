@@ -6,11 +6,11 @@
   <link rel="stylesheet" type="text/css" href="static/madoka.css" />
 </head>
 <body>
-  {{ modules.Menu(screen_name) }}
+  {% module Menu(screen_name) %}
   <div class="divspace">{{ title }}</div>
   {% if title == 'Reply' %}
     <div>----------</div>
-    {{ modules.Entry(origin_tweet, screen_name) }}
+    {% module Entry(origin_tweet, screen_name) %}
   {% end %}
   <div class="divspace">
     <form action="/update" method="post">

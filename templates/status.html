@@ -1,5 +1,5 @@
-<div>{{ status['screen_name'] }}({{status['name'] }}):</div>
-<div>{{ status['text'] }}</div>
+<div>{% raw status['screen_name'] %}({{status['name'] }}):</div>
+<div>{% raw status['text'] %}</div>
 <div>
 {{ status['created_at'] }}
 {% if non_operation == False %}

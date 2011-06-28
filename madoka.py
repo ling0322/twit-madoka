@@ -393,10 +393,9 @@ class LoginHandler(tornado.web.RequestHandler):
         if self.get_argument("access_token", None):
             self.set_secure_cookie('access_token', self.get_argument("access_token"))
             self.redirect('/')
-            self.finish()
             return
         
-        self.redirect('/twitsignin?callback=' + tornado.escape.url_escape('https://' + self.request.host + '/login'))
+        self.redirect('/twitsignin?callback=' + tornado.escape.url_escape('http://' + self.request.host + '/login'))
 
 class LogoutHandler(tornado.web.RequestHandler):
     def get(self):
