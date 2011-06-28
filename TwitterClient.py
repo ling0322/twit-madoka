@@ -48,7 +48,7 @@ class TwitterSignInHandler(tornado.auth.TwitterMixin, tornado.web.RequestHandler
             self.render("login.html", 
                 authenticity_token = authenticity_token,
                 oauth_token = oauth_token,
-                authorize_url = self.request.full_url())
+                authorize_url = '/twitsignin')
         
         
         if response.error:

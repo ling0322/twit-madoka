@@ -396,7 +396,7 @@ class LoginHandler(tornado.web.RequestHandler):
             self.finish()
             return
         
-        self.redirect('/twitsignin?callback=' + tornado.escape.url_escape('http://' + self.request.host + '/login'))
+        self.redirect('/twitsignin?callback=' + tornado.escape.url_escape('https://' + self.request.host + '/login'))
 
 class LogoutHandler(tornado.web.RequestHandler):
     def get(self):
