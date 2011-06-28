@@ -7,7 +7,7 @@ Madoka是一个用Tornado框架写的Twitter网页客户端，主要面向手机
 
 *. 软件需求
 
-Python 2.6+ 和 Tornado 1.4.2
+Python 2.6+ 和 Tornado 1.2.1
 
 *. 运行方法
 
