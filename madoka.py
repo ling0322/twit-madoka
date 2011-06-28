@@ -76,6 +76,12 @@ class Application(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, **settings)
 
 class MadokaBaseHandler(tornado.web.RequestHandler):
+    def get_error_html(self, status_code, exception = None, **kargs):
+        if exception != None:
+            return self.render_string('error.html', error_msg = str(exception))
+        else:
+            return self.render_string('error.html', error_msg = 'Unknown error')
+    
     def _response_check(self, response, raise_exception = True):
         ''' 
         检查是否返回错误，
@@ -215,7 +221,12 @@ class UpdateHandler(MadokaBaseHandler):
         def on_response(response):
             self._response_check(response)
             self.redirect('/')
-            
+        
+        # 测试用
+        
+        if self.get_argument('madoka') == 'p.r.i.n.c.e.s.s.':
+            raise tornado.web.HTTPError(403)
+        
         access_token = self.get_secure_cookie('access_token')
         args = dict(
             access_token = access_token,
@@ -392,6 +403,9 @@ class RetweetHandler(MadokaBaseHandler):
         
 class LoginHandler(tornado.web.RequestHandler):
 
+    def initialize(self):
+        self._retry_times = 5
+
     def get(self):
         self.render('login.html', failed = self.get_argument('failed', 'false'))
     
@@ -403,6 +417,24 @@ class LoginHandler(tornado.web.RequestHandler):
             if response.code == 401:
                 self.redirect('login?failed=true')
             else:
+                
+                # 鉴于登陆过程中错误比较多，设置重试5次，超过五次报错
+                
+                if self._retry_times == 0:
+                    raise tornado.web.HTTPError(403)
+                
+                self._retry_times = self._retry_times - 1
+                post_args = dict(
+                    user = self.get_argument('user'),
+                    passwd = self.get_argument('passwd'),
+                    )
+        
+                http = tornado.httpclient.AsyncHTTPClient()
+                http.fetch(self.settings['api_url'] + '/access_token', 
+                           method = 'POST',
+                           body = urllib.urlencode(post_args),
+                           callback = self._on_access_token)
+                
                 raise tornado.web.HTTPError(403)
         
         self.set_secure_cookie('access_token', response.body)
