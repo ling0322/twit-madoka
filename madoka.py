@@ -335,7 +335,7 @@ class ReplyHandler(MadokaBaseHandler):
         def on_response(response):
             self._response_check(response)
             tweet = tornado.escape.json_decode(response.body)
-            user_mentions = re.findall('@[A-Za-z0-9]+', tweet['text'])
+            user_mentions = re.findall('@[_A-Za-z0-9]+', tweet['text'])
             mentions = []
             for mention in user_mentions:
                 
