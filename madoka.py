@@ -143,7 +143,7 @@ class UserHandler(MadokaBaseHandler):
         if 'user_info' in self._result and 'user_timeline' in self._result:
             self.render(
                 'user.html', 
-                page = str(self._result['page']),
+                page = self._result['page'],
                 user_info = self._result['user_info'],
                 tweets = self._result['user_timeline'],
                 screen_name = self.current_user['screen_name'],
@@ -155,7 +155,7 @@ class UserHandler(MadokaBaseHandler):
     @tornado.web.asynchronous 
     def get(self, screen_name):
         
-        page = self.get_argument('page', 1)
+        page = int(self.get_argument('page', 1))
         self._result = {}
         self._result['page'] = page
         access_token = self.get_secure_cookie('access_token')
