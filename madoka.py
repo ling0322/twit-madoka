@@ -143,7 +143,7 @@ class UserHandler(MadokaBaseHandler):
         if 'user_info' in self._result and 'user_timeline' in self._result:
             self.render(
                 'user.html', 
-                page = self._result['page'],
+                page = str(self._result['page']),
                 user_info = self._result['user_info'],
                 tweets = self._result['user_timeline'],
                 screen_name = self.current_user['screen_name'],
