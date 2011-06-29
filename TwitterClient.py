@@ -132,7 +132,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         
         # 这个也是TwitterMixin里面的东西，重写方法来拦截错误
         if response.error:
-            raise response.error
+            raise tornado.web.HTTPError(403)
             return
         
         # 如果callback为None表示不需要回调函数，就直接调用self.finish就可以了ww

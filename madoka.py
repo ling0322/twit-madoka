@@ -109,8 +109,28 @@ class MadokaBaseHandler(tornado.web.RequestHandler):
         else:
             return tornado.escape.json_decode(self.get_secure_cookie("access_token"))
 
-
-    
+    def fetch(self, request, callback, retry_times = 5, **kwargs):
+        '''
+        异步获得一个页面，如果出现错误则重试retry_times次
+        '''
+        
+        
+        def http_respose(response):
+            if response.error:
+                if closure['retry_times'] == 0:
+                    callback(response)
+                else:
+                    closure['retry_times'] = closure['retry_times'] - 1
+                    http = tornado.httpclient.AsyncHTTPClient()
+                    http.fetch(request, http_respose, **kwargs)
+            else:
+                callback(response)
+            
+        closure = {}
+        closure['retry_times'] = retry_times
+        http = tornado.httpclient.AsyncHTTPClient()
+        http.fetch(request, http_respose, **kwargs)        
+        
 class MainHandler(MadokaBaseHandler):
     @tornado.web.authenticated
     @tornado.web.asynchronous 
@@ -122,8 +142,7 @@ class MainHandler(MadokaBaseHandler):
             page = page,
             access_token = access_token,
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(
+        self.fetch(
             self.settings['api_url'] + '/home_timeline?' + urllib.urlencode(args), 
             self.async_callback(self._render_tweets, 'Timeline', int(page))
             )
@@ -159,13 +178,12 @@ class UserHandler(MadokaBaseHandler):
         self._result = {}
         self._result['page'] = page
         access_token = self.get_secure_cookie('access_token')
-        http = tornado.httpclient.AsyncHTTPClient()
         
         # 只有第一页才显示用户信息
         
         if page == 1:
             args = dict(screen_name = screen_name, access_token = access_token)
-            http.fetch(
+            self.fetch(
                 self.settings['api_url'] + '/user_info?' + urllib.urlencode(args), 
                 self._on_user_info
                 )   
@@ -178,7 +196,7 @@ class UserHandler(MadokaBaseHandler):
             access_token = access_token,
             )
         
-        http.fetch(
+        self.fetch(
             self.settings['api_url'] + '/user_timeline?' + urllib.urlencode(args), 
             self._on_user_timeline
             )   
@@ -193,8 +211,7 @@ class MentionHandler(MadokaBaseHandler):
             page = page,
             access_token = access_token,
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(
+        self.fetch(
             self.settings['api_url'] + '/mentions?' + urllib.urlencode(args),
             self.async_callback(self._render_tweets, 'Mention', int(page))
             )
@@ -221,8 +238,7 @@ class RemoveHandler(MadokaBaseHandler):
             id = id,
             access_token = access_token,
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(
+        self.fetch(
             self.settings['api_url'] + '/show?' + urllib.urlencode(args),
             on_response
             )
@@ -244,8 +260,7 @@ class RemoveHandler(MadokaBaseHandler):
             id = id,
             access_token = access_token,
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(
+        self.fetch(
             self.settings['api_url'] + '/remove?' + urllib.urlencode(args),
             on_response
             )
@@ -278,8 +293,8 @@ class UpdateHandler(MadokaBaseHandler):
             status = tornado.escape.url_escape(self.get_argument('madoka'))
         )
         
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(self.settings['api_url'] + '/update?' + urllib.urlencode(args), 
+        self.fetch(self.settings['api_url'] + '/update?' + urllib.urlencode(args),
+                   retry_times = 1, 
                    method = 'POST',
                    body = urllib.urlencode(post_args),
                    callback = on_response)
@@ -354,7 +369,7 @@ class ConversationLineHandler(MadokaBaseHandler):
                     access_token = access_token,
                     id = closure_var['origin_tweet']['in_reply_to_status_id'],
                     )
-                http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_in_reply_to)
+                self.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_in_reply_to)
                 return 
 
             self.render(
@@ -370,9 +385,8 @@ class ConversationLineHandler(MadokaBaseHandler):
             access_token = access_token,
             id = self.get_argument('id')
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(self.settings['api_url'] + '/details?' + urllib.urlencode(args), _on_related_results)
-        http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_origin_tweet)
+        self.fetch(self.settings['api_url'] + '/details?' + urllib.urlencode(args), _on_related_results)
+        self.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), _on_origin_tweet)
 
         
 class ReplyHandler(MadokaBaseHandler): 
@@ -390,6 +404,8 @@ class ReplyHandler(MadokaBaseHandler):
                 # 回复列表里面去掉用户自己, 去掉前面已经提到过的
                 
                 if mention == '@' + self.current_user['screen_name']:
+                    continue
+                elif mention == '@' + tweet['screen_name']:
                     continue
                 elif mention in mentions:
                     continue
@@ -409,8 +425,7 @@ class ReplyHandler(MadokaBaseHandler):
             access_token = access_token,
             id = self.get_argument('id')
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
+        self.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
 
 
 class RetweetHandler(MadokaBaseHandler): 
@@ -434,8 +449,7 @@ class RetweetHandler(MadokaBaseHandler):
             access_token = access_token,
             id = self.get_argument('id')
         )
-        http = tornado.httpclient.AsyncHTTPClient()
-        http.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
+        self.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
         
         
 class LoginHandler(tornado.web.RequestHandler):
@@ -472,7 +486,6 @@ class LoginHandler(tornado.web.RequestHandler):
                            body = urllib.urlencode(post_args),
                            callback = self._on_access_token)
                 
-                raise tornado.web.HTTPError(403)
         
         self.set_secure_cookie('access_token', response.body)
         self.redirect('/')
