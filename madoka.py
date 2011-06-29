@@ -129,21 +129,58 @@ class MainHandler(MadokaBaseHandler):
             )
 
 class UserHandler(MadokaBaseHandler):
+    def _on_user_info(self, response):
+        self._response_check(response)
+        self._result['user_info'] = tornado.escape.json_decode(response.body)
+        self._request_finished()
+        
+    def _on_user_timeline(self, response):
+        self._response_check(response)
+        self._result['user_timeline'] = tornado.escape.json_decode(response.body)
+        self._request_finished()
+    
+    def _request_finished(self):
+        if 'user_info' in self._result and 'user_timeline' in self._result:
+            self.render(
+                'user.html', 
+                page = self._result['page'],
+                user_info = self._result['user_info'],
+                tweets = self._result['user_timeline'],
+                screen_name = self.current_user['screen_name'],
+                
+                )
+    
+    
     @tornado.web.authenticated
     @tornado.web.asynchronous 
     def get(self, screen_name):
         
         page = self.get_argument('page', 1)
+        self._result = {}
+        self._result['page'] = page
         access_token = self.get_secure_cookie('access_token')
+        http = tornado.httpclient.AsyncHTTPClient()
+        
+        # 只有第一页才显示用户信息
+        
+        if page == 1:
+            args = dict(screen_name = screen_name, access_token = access_token)
+            http.fetch(
+                self.settings['api_url'] + '/user_info?' + urllib.urlencode(args), 
+                self._on_user_info
+                )   
+        else:
+            self._result['user_info'] = None    
+            
         args = dict(
             screen_name = screen_name,
             page = page,
             access_token = access_token,
-        )
-        http = tornado.httpclient.AsyncHTTPClient()
+            )
+        
         http.fetch(
             self.settings['api_url'] + '/user_timeline?' + urllib.urlencode(args), 
-            self.async_callback(self._render_tweets, 'Timeline', int(page))
+            self._on_user_timeline
             )   
            
 class MentionHandler(MadokaBaseHandler):

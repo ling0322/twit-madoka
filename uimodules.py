@@ -9,35 +9,43 @@ import re
 import datetime
 import time
 
+def _strftime(timestr):
+    ''' 将一个标准格式时间, 改变成Tweet上显示的格式 '''
+
+    cntTime = datetime.datetime(*time.gmtime()[0:6])
+    t = datetime.datetime(*time.strptime(timestr, "%a %b %d %X %Z %Y")[0:6])
+    delta = int((cntTime - t).total_seconds())
+    ret = ''
+    if t.year != cntTime.year:
+        
+        # 如果年份不一样，则把年份显示出来
+        return t.strftime("%d %b %Y")
+        
+        
+    if delta > 24 * 60 * 60:
+        # if interval is more than 1 day then just return the date
+        return t.strftime("%d %b")
+    else:
+        # in other case, return the interval
+        if delta / 3600 > 0:
+            ret = ret + str(delta / 3600) + 'hr'
+            delta = delta % 3600
+        elif delta / 60 > 0:
+            ret = ret + str(delta / 60) + 'min'
+            delta = delta % 60
+        else:
+            ret = ret + str(delta) + 's'
+            
+        ret += ' ago'
+        return ret
+
 class Entry(tornado.web.UIModule):
     def __init__(self, *args, **kwargs):
         self.re_screen_name = re.compile('@([A-Za-z0-9_]+)')
         self.re_link = re.compile('(https|http)://([-\w]+\.)+[-\w]+(/[-\w./?%&=]*)?')
         tornado.web.UIModule.__init__(self, *args, **kwargs)
     
-    def _strftime(self, timestr):
-        ''' 将一个标准格式时间, 改变成Tweet上显示的格式 '''
 
-        cntTime = datetime.datetime(*time.gmtime()[0:6])
-        t = datetime.datetime(*time.strptime(timestr, "%a %b %d %X %Z %Y")[0:6])
-        delta = int((cntTime - t).total_seconds())
-        ret = ''
-        if delta > 24 * 60 * 60:
-            # if interval is more than 1 day then just return the date
-            return t.strftime("%d %b")
-        else:
-            # in other case, return the interval
-            if delta / 3600 > 0:
-                ret = ret + str(delta / 3600) + 'hr'
-                delta = delta % 3600
-            elif delta / 60 > 0:
-                ret = ret + str(delta / 60) + 'min'
-                delta = delta % 60
-            else:
-                ret = ret + str(delta) + 's'
-            
-            ret += ' ago'
-            return ret
     
     def render(self, status, screen_name, non_operation = False):
         
@@ -58,7 +66,7 @@ class Entry(tornado.web.UIModule):
         
         # 把时间改编成距离当前的时间
         
-        status['created_at'] = self._strftime(status['created_at'])
+        status['created_at'] = _strftime(status['created_at'])
         
         return self.render_string(
             "status.html", status = status, disp_remove = disp_remove, non_operation = non_operation)
@@ -70,3 +78,8 @@ class TweetList(tornado.web.UIModule):
 class Menu(tornado.web.UIModule):
     def render(self, screen_name):
         return self.render_string("menu.html", screen_name = screen_name)
+
+class UserInfo(tornado.web.UIModule):
+    def render(self, user_info, screen_name):
+        user_info['created_at'] = _strftime(user_info['created_at'])
+        return self.render_string("user_info.html", user_info = user_info, screen_name = screen_name)

@@ -191,7 +191,26 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         
         self.write(tornado.escape.json_encode(dump))
         self.finish()
-
+        
+    def _dump_user_info(self, user_info):
+        ui = {}
+        ui['id'] = user_info['id']
+        ui['name'] = user_info['name']
+        ui['screen_name'] = user_info['screen_name']
+        ui['location'] = user_info['location']
+        ui['description'] = user_info['description']
+        ui['profile_image_url'] = user_info['profile_image_url']
+        ui['followers_count'] = user_info['followers_count']
+        ui['friends_count'] = user_info['friends_count']
+        ui['created_at'] = user_info['created_at'].replace('+0000', 'UTC')
+        ui['favourites_count'] = user_info['favourites_count']
+        ui['following'] = user_info['following']
+        ui['statuses_count'] = user_info['statuses_count']
+        return ui
+        
+    def _on_user_info(self, user_info):
+        self.write(tornado.escape.json_encode(self._dump_user_info(user_info)))
+        self.finish()
         
     @tornado.web.asynchronous
     def get(self, request):
@@ -234,6 +253,17 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 access_token = {u'secret': secret, u'key': key},
                 callback = self._on_related_results,
                 ) 
+            
+        elif request == 'user_info':
+            
+            # 得到某个用户的信息
+            
+            self.twitter_request(
+                path = "/users/show",
+                access_token = {u'secret': secret, u'key': key},
+                callback = self._on_user_info,
+                screen_name = self.get_argument('screen_name')
+                )             
             
         elif request == 'remove':
             # 删除某个Tweet
