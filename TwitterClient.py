@@ -147,11 +147,21 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
         
         t = {}
         t['text'] = tweet['text']
+        #
+        # solve t.co problems -> replace t.co links with the original links
+        #
+        
+        if 'entities' in tweet:
+            t['urls'] = tweet['entities']['urls']
+        else:
+            t['urls'] = []
+        
         t['name'] = tweet['user']['name']
         t['screen_name'] = tweet['user']['screen_name']
         t['created_at'] = tweet['created_at'].replace('+0000', 'UTC')
         t['id'] = tweet['id']
         t['in_reply_to_status_id'] = tweet['in_reply_to_status_id']
+        t['profile_image_url'] = tweet['user']['profile_image_url']
         return t
     
     
@@ -226,6 +236,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 access_token = {u'secret': secret, u'key': key},
                 callback = self._on_fetch,
                 page = self.get_argument('page', 1),
+                include_entities = 'true'
                 )  
         elif request == 'mentions':
             # 得到mention一个用户的Tweet
@@ -235,6 +246,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 page = self.get_argument('page', 1),
                 access_token = {u'secret': secret, u'key': key},
                 callback = self._on_fetch,
+                include_entities = 'true'
                 )  
         elif request == 'show':
             #得到某个特定id的Tweet
@@ -243,6 +255,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 path = "/statuses/show/" + str(self.get_argument('id')),
                 access_token = {u'secret': secret, u'key': key},
                 callback = self.async_callback(self._on_fetch, single_tweet = True),
+                include_entities = False
                 ) 
         elif request == 'details':
             
@@ -252,6 +265,7 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 path = "/related_results/show/" + str(self.get_argument('id')),
                 access_token = {u'secret': secret, u'key': key},
                 callback = self._on_related_results,
+                include_entities = True
                 ) 
             
         elif request == 'user_info':
@@ -285,9 +299,30 @@ class TwitterClient(tornado.auth.TwitterMixin, tornado.web.RequestHandler):
                 page = self.get_argument('page', 1),
                 screen_name = self.get_argument('screen_name'),
                 callback = self._on_fetch,
+                include_entities = 'true'
                 ) 
-            
-            pass
+        elif request == 'follow':
+            #
+            # follow someone 
+            # argument screen_name: screen name of the one you want to follow
+            #
+            self.twitter_request(
+                path = "/friendships/create",
+                access_token = {u'secret': secret, u'key': key},
+                post_args={'screen_name': self.get_argument('screen_name')},
+                callback = None,
+                )      
+        elif request == 'unfollow':
+            #
+            # follow someone 
+            # argument screen_name: screen name of the one you want to follow
+            #
+            self.twitter_request(
+                path = "/friendships/destroy",
+                access_token = {u'secret': secret, u'key': key},
+                post_args={'screen_name': self.get_argument('screen_name')},
+                callback = None,
+                )     
         else:
             raise tornado.httpclient.HTTPError(403, 'Invaild Request Path ~')     
             

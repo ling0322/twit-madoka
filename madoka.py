@@ -56,7 +56,8 @@ class Application(tornado.web.Application):
             (r"/update", UpdateHandler),
             (r"/retweet", RetweetHandler),
             (r"/login", LoginHandler),
-
+            (r"/follow/(.+)", FollowHandler),
+            (r"/unfollow/(.+)", UnFollowHandler),
             (r"/logout", LogoutHandler),
             (r"/user/(.*)", UserHandler),
             (r"/remove", RemoveHandler),
@@ -450,8 +451,37 @@ class RetweetHandler(MadokaBaseHandler):
             id = self.get_argument('id')
         )
         self.fetch(self.settings['api_url'] + '/show?' + urllib.urlencode(args), on_response)
+
+class FollowHandler(MadokaBaseHandler): 
+    @tornado.web.authenticated
+    @tornado.web.asynchronous
+    def get(self, screen_name):
         
+        def _on_response(response):
+            self.redirect('/user/' + screen_name)
+            
+        access_token = self.get_secure_cookie('access_token')
+        args = dict(
+            access_token = access_token,
+            screen_name = screen_name,
+        )
+        self.fetch(self.settings['api_url'] + '/follow?' + urllib.urlencode(args), _on_response)
+
+class UnFollowHandler(MadokaBaseHandler): 
+    @tornado.web.authenticated
+    @tornado.web.asynchronous
+    def get(self, screen_name):
         
+        def _on_response(response):
+            self.redirect('/user/' + screen_name)
+            
+        access_token = self.get_secure_cookie('access_token')
+        args = dict(
+            access_token = access_token,
+            screen_name = screen_name,
+        )
+        self.fetch(self.settings['api_url'] + '/unfollow?' + urllib.urlencode(args), _on_response)
+
 class LoginHandler(tornado.web.RequestHandler):
 
     def initialize(self):

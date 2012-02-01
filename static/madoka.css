@@ -26,3 +26,10 @@ a:hover {
     color: #34a0cc;
     text-decoration: underline;
 }
+
+.avatar {
+    float: left;
+}
+.content {
+    margin-left: 60px;
+}

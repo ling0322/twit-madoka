@@ -4,4 +4,10 @@
 <div>Friends: {{ user_info['friends_count'] }}&nbsp;&nbsp;Followers: {{ user_info['followers_count'] }}&nbsp;&nbsp;Statuses: {{ user_info['statuses_count'] }}</div>
 <div>Location: {{ user_info['location'] }}</div>
 <div>Created at: {{ user_info['created_at'] }}</div>
-<div>Following: {{ user_info['following'] }}</div>
+<div>
+  {% if user_info['following'] == False %}
+  <span><a href="/follow/{{ user_info['screen_name'] }}">Follow</a></span>
+  {% else %}
+  <span><a href="/unfollow/{{ user_info['screen_name'] }}">Unfollow</a></span>
+  {% end %}
+</div>

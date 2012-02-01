@@ -42,7 +42,6 @@ def _strftime(timestr):
 class Entry(tornado.web.UIModule):
     def __init__(self, *args, **kwargs):
         self.re_screen_name = re.compile('@([A-Za-z0-9_]+)')
-        self.re_link = re.compile('(https|http)://([-\w]+\.)+[-\w]+(/[-\w./?%&=]*)?')
         tornado.web.UIModule.__init__(self, *args, **kwargs)
     
 
@@ -58,10 +57,11 @@ class Entry(tornado.web.UIModule):
         
         def screen_name_match(match):
             return '<a href="/user/{0}">@{0}</a>'.format(match.group(1))
-        def link_match(match):
-            return '<a href="{0}">{0}</a>'.format(match.group(0))
         status['text'] = self.re_screen_name.sub(screen_name_match, status['text'])
-        status['text'] = self.re_link.sub(link_match, status['text'])
+        for url in status['urls']:
+            status['text'] = status['text'].replace(
+                url['url'], 
+                '<a href="{0}">{1}</a>'.format(url['expanded_url'], url['display_url']))
         status['screen_name'] = '<a href="/user/{0}">@{0}</a>'.format(status['screen_name'])
         
         # 把时间改编成距离当前的时间
