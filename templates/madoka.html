@@ -9,8 +9,8 @@
 <body>
   {% module Menu(screen_name) %}
   <form action="/update" method="post">
-    <div class="divspace"><textarea name="madoka" rows="2"></textarea></div>
-    <div class="divspace"><button type="submit">Post</button></div>
+    <div class="divspace"><textarea id="madoka" name="madoka" rows="4"></textarea></div>
+    <div class="divspace"><button id="madoka-submit" type="submit">Post</button></div>
   </form>
   <div class="divspace">{{ title }}</div>
   <div>----------</div>

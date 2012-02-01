@@ -1,6 +1,8 @@
 body {
     font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Helvetica, Arial, sans-serif;
-    font-size: 12px;
+    font-size: 14px;
+    padding: 5px;
+    margin: 0px;
 }
 
 .divspace {
@@ -32,4 +34,17 @@ a:hover {
 }
 .content {
     margin-left: 60px;
+}
+
+#madoka {
+    width: 100%;
+    margin: 0px;
+    padding: 0px;
+}
+
+#madoka-submit {
+    width: 64px;
+    height: 24px;
+    margin: 0px;
+    padding: 0px;
 }
